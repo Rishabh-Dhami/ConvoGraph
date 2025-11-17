@@ -3,8 +3,18 @@
 __pycache__/
 *.pyc
 
+src/database
 
 .env
 .langgraph_api
 
 marketing_reports
+
+# Local SQLite DB and journals (keep schema/migrations in source control)
+/src/database/*.db
+/src/database/*.db-journal
+/src/database/*.wal
+/src/database/*.shm
+
+# Keep a placeholder file if you want the directory tracked
+# src/database/.gitkeep
