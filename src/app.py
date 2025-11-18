@@ -48,6 +48,20 @@ db_path = db_dir / "convo_graph.db"
 
 conn = sqlite3.connect(str(db_path), check_same_thread=False)
 
-checkpointer = SqliteSaver(conn=conn) 
+checkpointer = SqliteSaver(conn=conn)
+ 
+
+# Create titles table
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS chat_titles (
+    thread_id TEXT PRIMARY KEY,
+    title TEXT
+)
+""")
+conn.commit()   
 
 chat = graph.compile(checkpointer=checkpointer)
+
+
+

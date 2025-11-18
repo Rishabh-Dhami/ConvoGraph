@@ -1,5 +1,5 @@
 import uuid
-from app import checkpointer, chat, llm
+from app import checkpointer, chat, llm, cursor, conn
 from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -34,4 +34,15 @@ def generate_title(input) -> str:
     res = chain.invoke({"input": input})
     return res
 
+def save_title(thread_id, title):
+    cursor.execute("""
+        INSERT OR REPLACE INTO chat_titles (thread_id, title)
+        VALUES (?, ?)
+    """, (thread_id, title))
+    conn.commit()
+
+def get_title(thread_id):
+    cursor.execute("SELECT title FROM chat_titles WHERE thread_id = ?", (thread_id,))
+    row = cursor.fetchone()
+    return row[0] if row else "New Chat"
 

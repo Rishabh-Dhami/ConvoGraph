@@ -1,6 +1,6 @@
 import streamlit as st
 from app import chat
-from utils import new_thread_id, retrival_all_threads, load_chats, generate_title
+from utils import new_thread_id, retrival_all_threads, load_chats, generate_title, save_title, get_title
 
 
 def switch_thread(thread_id):
@@ -21,8 +21,6 @@ if "history_chats" not in st.session_state:
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = new_thread_id()
 
-if "thread_titles" not in st.session_state:
-    st.session_state.thread_titles = {}    
 
 
 for mssg in st.session_state.history_chats:
@@ -47,12 +45,7 @@ with st.sidebar:
     thread_list = retrival_all_threads()
 
     for tid in thread_list:
-        if tid not in st.session_state.thread_titles:
-            st.session_state.thread_titles[tid] = f"Chat {tid[:6]}"
-
-    for tid in thread_list:
-        title = st.session_state.thread_titles.get(tid, f"Chat {tid[:6]}")
-        if st.button(title, key=f"thread-{tid}", use_container_width=True):
+        if st.button(get_title(tid)[:30]+"....", key=f"btn-{tid}", use_container_width=True):
             switch_thread(thread_id=tid)
 
 
@@ -64,20 +57,26 @@ if user_input:
     with st.chat_message("user"):
         st.write(user_input)
 
-    response = chat.invoke({"messages": user_input}, config=CONFIG)
-
-    st.session_state.history_chats.append(
-        {"role": "assistant", "content": response["messages"][-1].content}
-    )
+    
     with st.chat_message("assistant"):
-        st.write(response["messages"][-1].content)
+        response = st.write_stream(
+            chunk.content
+            for chunk, meta in chat.stream(
+                {"messages": user_input},
+                config=CONFIG,
+                stream_mode="messages",
+            )
+        )
+        st.session_state.history_chats.append(
+        {"role": "assistant", "content": response})
 
 
     # If this is the first chat in the thread, update sidebar
-    if len(st.session_state.history_chats) == 2:
-        new_title = generate_title(user_input) 
-        st.session_state.thread_titles[st.session_state.thread_id] = new_title
-        st.rerun() 
+    if get_title(st.session_state.thread_id) == "New Chat":
+        new_title = generate_title(user_input)
+        save_title(st.session_state.thread_id, new_title)
+        st.rerun()
+
 
 
 
