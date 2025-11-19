@@ -189,8 +189,6 @@ Create a `.env` in the repo root with keys your LLM provider requires (example n
 
 ```
 GOOGLE_API_KEY=your_google_key
-# or OPENAI_API_KEY=your_openai_key
-# LANGGRAPH_API_KEY=...
 ```
 
 4. Run the Streamlit UI
