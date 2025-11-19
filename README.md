@@ -1,6 +1,167 @@
 # ConvoGraph — Conversational Workflow with LLMs
 
-ConvoGraph is a compact demo that combines a StateGraph-driven chat workflow with LLM-powered responses and optional SQLite checkpointing. It provides a Streamlit-based UI for multi-threaded chat sessions and automatic short-title generation for new conversations.
+This README follows a clear, example-driven structure inspired by LiveKit Agent documentation to make setup, usage and development easy for contributors and evaluators.
+
+---
+
+## Overview
+
+ConvoGraph is an experimental conversational workflow demo that combines a StateGraph-based chat flow with LLM-powered responses and optional SQLite checkpointing. The project is intended as a small platform to prototype conversation flows, thread management and LLM integrations using a Streamlit UI.
+
+Key goals:
+- Demonstrate multi-threaded chat sessions (thread ids) and a sidebar history UI.
+- Provide optional local checkpointing (SQLite) for persisted conversation state.
+- Auto-generate short titles for conversations using an LLM prompt.
+
+## Features
+
+- Multi-thread chat sessions with generated thread titles
+- Streamlit-based UI for quick local interaction (`src/core.py`)
+- Pluggable checkpointing: `SqliteSaver` (if available) or in-memory fallback
+- Title generation using a configurable system prompt (`src/prompts.py`)
+- Minimal helper utilities for loading/saving threads (`src/utils.py`)
+
+## Architecture
+
+The codebase is intentionally small and contains three main pieces:
+
+1. LLM & Graph logic (`src/app.py`)
+	- Initializes LLM client, StateGraph, and optional checkpointing.
+	- Exposes `chat = graph.compile(checkpointer=...)` which other modules use to invoke the chain.
+
+2. Streamlit UI (`src/core.py`)
+	- Sidebar: thread list, new thread button, and thread switching.
+	- Main area: chat messages and chat input; automatically triggers title generation for first messages.
+
+3. Utilities & Prompts (`src/utils.py`, `src/prompts.py`)
+	- Helpers for thread id generation, loading chats from a checkpoint, and generating titles.
+	- Prompt templates used to direct LLM behavior.
+
+Support files:
+- `src/init_db.py` — small helper to create a local SQLite DB and example data.
+- `src/database/` — directory for local DB (ignored by Git by default; `.gitkeep` is included to preserve the folder).
+
+## Prerequisites
+
+- Python 3.10+ (3.11 recommended)
+- Virtual environment for isolated dependencies
+- LLM provider API key (e.g., Google/Oracle/OpenAI) configured in `.env`
+
+Optional services depending on your connector:
+- LangChain / langgraph packages
+- Provider-specific client libraries (e.g., `langchain-google-genai`)
+
+## Installation
+
+1. Clone the repository
+
+```bash
+git clone <repo-url>
+cd ConvoGraph
+```
+
+2. Create a virtual environment and activate it
+
+Windows (PowerShell):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate
+```
+
+3. Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+4. Create a `.env` file in the repo root and set provider keys
+
+Example `.env` entries (adapt names for your provider):
+
+```
+GOOGLE_API_KEY=your_google_api_key
+# or OPENAI_API_KEY=your_openai_api_key
+# LANGGRAPH_API_KEY=...
+```
+
+## Setup (local DB)
+
+Initialize the local SQLite database (creates `src/database/convo_graph.db` and sample data):
+
+```powershell
+python src/init_db.py
+```
+
+This script will create a `threads` and `messages` schema and add an example conversation.
+
+## Running the app
+
+Run the Streamlit UI for interactive testing:
+
+```powershell
+streamlit run src/core.py
+```
+
+Or run core modules directly for debugging:
+
+```powershell
+python src/app.py   # checks LLM and graph wiring (non-UI)
+```
+
+## Usage examples
+
+- Start a new chat in the sidebar (`New Chat`). The first user + assistant exchange will automatically generate a short conversation title and appear in the sidebar.
+- To test title generation directly (without Streamlit):
+
+```powershell
+python - <<'PY'
+from src.utils import generate_title
+print(generate_title('I need a short Python snippet to reverse a list'))
+PY
+```
+
+## API / Integration points
+
+ConvoGraph does not ship a separate HTTP API by default — the primary interaction is via the Streamlit frontend which calls into the compiled `chat` object from `src/app.py`.
+
+If you want to expose REST endpoints, consider adding a small FastAPI wrapper that calls `chat.invoke(...)` and persists the state using the same checkpointer.
+
+## Technical details
+
+- Checkpointing: `src/app.py` will attempt to use `SqliteSaver(conn=conn)` if `langgraph` provides it; otherwise it falls back to `InMemorySaver()`.
+- Thread storage: The `checkpointer` stores conversation messages and exposes `list()` and `get_state()` as used in `src/utils.py`.
+- Title generator: `src/utils.generate_title` uses `ChatPromptTemplate` to assemble a system + user prompt and invoke the LLM. The function normalizes different return types and falls back to `"New Conversation"` on error.
+
+## Troubleshooting
+
+- ModuleNotFoundError for langgraph checkpoint modules: install `langgraph-checkpoint-sqlite` (package name may vary), or rely on the in-memory fallback.
+- `sqlite3.OperationalError`: ensure `src/database/` exists and is writable; `src/init_db.py` will create it for you.
+- LLM API errors: check your `.env` and provider quota/permissions.
+
+## Development
+
+- To reproduce the exact environment from the developer machine, use the provided `requirements.txt`.
+- If you prefer a minimal runtime-only set (recommended for contributors), I can generate a `requirements-runtime.txt` containing only the packages required to run the app (Streamlit, python-dotenv, provider connectors, etc.).
+
+## Contributing
+
+- Fork the repo and open a PR against `main`.
+- Keep secrets and local DB files out of Git; use `.env` and ensure `src/database/*.db` is ignored.
+
+## Authors
+
+- Rishabh Dhami — project lead
+
+---
+
+If you want, next steps I can implement for you:
+
+- A — Add a simple FastAPI wrapper exposing basic conversation endpoints
+- B — Produce a slim `requirements-runtime.txt` containing only runtime packages
+- C — Add sample screenshots and a short GitHub repo description
+
+Reply with one or more options (A/B/C) and I'll implement them.
 
 Live (local): Run the Streamlit app at `src/core.py`.
 
