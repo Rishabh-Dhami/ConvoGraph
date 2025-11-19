@@ -23,6 +23,7 @@ class ChatState(TypedDict):
 
 
 def chat_assistant(state: ChatState) -> dict:
+    # Build the chat prompt from state and invoke the LLM assistant node
     prompt = ChatPromptTemplate.from_messages(
         {("system", chat_prompt), ("user", "{messages}")}
     )
@@ -49,19 +50,19 @@ db_path = db_dir / "convo_graph.db"
 conn = sqlite3.connect(str(db_path), check_same_thread=False)
 
 checkpointer = SqliteSaver(conn=conn)
- 
+
 
 # Create titles table
 cursor = conn.cursor()
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE IF NOT EXISTS chat_titles (
     thread_id TEXT PRIMARY KEY,
     title TEXT
 )
-""")
-conn.commit()   
+"""
+)
+conn.commit()
 
 chat = graph.compile(checkpointer=checkpointer)
-
-
 
