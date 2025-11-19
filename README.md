@@ -1,9 +1,5 @@
 # ConvoGraph — Conversational Workflow with LLMs
 
-This README follows a clear, example-driven structure inspired by LiveKit Agent documentation to make setup, usage and development easy for contributors and evaluators.
-
----
-
 ## Overview
 
 ConvoGraph is an experimental conversational workflow demo that combines a StateGraph-based chat flow with LLM-powered responses and optional SQLite checkpointing. The project is intended as a small platform to prototype conversation flows, thread management and LLM integrations using a Streamlit UI.
