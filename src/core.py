@@ -59,16 +59,17 @@ if user_input:
 
     
     with st.chat_message("assistant"):
-        response = st.write_stream(
-            chunk.content
-            for chunk, meta in chat.stream(
-                {"messages": user_input},
-                config=CONFIG,
-                stream_mode="messages",
+        with st.spinner("Responding.."):
+            response = st.write_stream(
+                chunk.content
+                for chunk, meta in chat.stream(
+                    {"messages": user_input},
+                    config=CONFIG,
+                    stream_mode="messages",
+                )
             )
-        )
-        st.session_state.history_chats.append(
-        {"role": "assistant", "content": response})
+            st.session_state.history_chats.append(
+            {"role": "assistant", "content": response})
 
 
     # If this is the first chat in the thread, update sidebar
