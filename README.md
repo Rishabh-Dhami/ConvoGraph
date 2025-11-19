@@ -1,7 +1,5 @@
 # ConvoGraph — Conversational Workflow with LLMs
 
-## Overview
-
 ConvoGraph is an experimental conversational workflow demo that combines a StateGraph-based chat flow with LLM-powered responses and optional SQLite checkpointing. The project is intended as a small platform to prototype conversation flows, thread management and LLM integrations using a Streamlit UI.
 
 Key goals:
