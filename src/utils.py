@@ -62,5 +62,3 @@ def get_title(thread_id):
     cursor.execute("SELECT title FROM chat_titles WHERE thread_id = ?", (thread_id,))
     row = cursor.fetchone()
     return row[0] if row else "New Chat"
-
-
