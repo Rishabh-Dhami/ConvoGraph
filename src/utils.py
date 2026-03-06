@@ -1,5 +1,13 @@
 import uuid
-from app import checkpointer, chat, llm, cursor, conn
+from app import (
+    checkpointer,
+    chat,
+    llm,
+    cursor,
+    conn,
+    _THREAD_METADATA,
+    _THREAD_RETRIEVERS,
+)
 from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -11,12 +19,12 @@ def new_thread_id() -> str:
     return str(uuid.uuid4())
 
 
-def retrival_all_threads() -> list:
+def retrieve_all_threads() -> list:
     # Return a list of unique thread IDs available in the checkpointer
-    threads = []
+    all_threads = set()
     for thread in checkpointer.list(None):
-        threads.append(thread.config["configurable"]["thread_id"])
-    return list(dict.fromkeys(threads))
+        all_threads.add(thread.config["configurable"]["thread_id"])
+    return list(all_threads)
 
 
 def load_chats(thread_id) -> list:
@@ -32,6 +40,14 @@ def load_chats(thread_id) -> list:
             for m in msgs
         ]
     return []
+
+
+def thread_has_document(thread_id: str) -> bool:
+    return str(thread_id) in _THREAD_RETRIEVERS
+
+
+def thread_document_metadata(thread_id: str) -> dict:
+    return _THREAD_METADATA.get(str(thread_id), {})
 
 
 def generate_title(input) -> str:
@@ -62,3 +78,29 @@ def get_title(thread_id):
     cursor.execute("SELECT title FROM chat_titles WHERE thread_id = ?", (thread_id,))
     row = cursor.fetchone()
     return row[0] if row else "New Chat"
+
+
+def delete_all_chats():
+    """
+    Delete all chat history from the database.
+    """
+
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM checkpoints")
+        cursor.execute("DELETE FROM chat_titles")
+
+        conn.commit()
+
+        # Clear memory caches
+        _THREAD_RETRIEVERS.clear()
+        _THREAD_METADATA.clear()
+
+        return {"status": "success", "message": "All chats deleted"}
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
