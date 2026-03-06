@@ -1,5 +1,6 @@
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_core.messages import  BaseMessage
 from langgraph.graph import StateGraph, START, END
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph.message import add_messages
 from dotenv import load_dotenv
 import requests
@@ -7,11 +8,10 @@ from typing import TypedDict, Annotated, Dict, Optional, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.checkpoint.memory import InMemorySaver
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.tools import tool
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import CharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langgraph.prebuilt import ToolNode, tools_condition
 import sqlite3
 import tempfile
@@ -40,7 +40,7 @@ class ChatState(TypedDict):
 
 def _get_retriever(thread_id: Optional[str]):
     """Fetch the retriever for a thread if available."""
-    if thread_id and thread_id in _THREAD_RETRIEVERS:
+    if thread_id and str(thread_id) in _THREAD_RETRIEVERS:
         return _THREAD_RETRIEVERS[str(thread_id)]
     return None
 
@@ -69,7 +69,7 @@ def ingest_pdf(file_bytes: bytes, thread_id: str, filename: Optional[str] = None
         loader = PyPDFLoader(temp_path)
         docs = loader.load()
 
-        splitter = CharacterTextSplitter(
+        splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000, chunk_overlap=200,  separators=["\n\n", "\n", " ", ""]
         )
 
@@ -101,7 +101,7 @@ def ingest_pdf(file_bytes: bytes, thread_id: str, filename: Optional[str] = None
             pass
 
 @tool
-def rag_tool(thread_id: Optional[str], query: str):
+def rag_tool(query: str, config: RunnableConfig):
     """
     Retrieve relevant information from the PDF associated with a chat thread.
 
@@ -120,13 +120,15 @@ def rag_tool(thread_id: Optional[str], query: str):
         ValueError: If thread_id is missing or no document is indexed.
     """
 
+    thread_id = config["configurable"].get("thread_id")
+
     if not thread_id:
         return {
             "error" : "thread id is required to retriever documents context",
             "query" : query
         }
 
-    retriever = _THREAD_RETRIEVERS[str(thread_id)]
+    retriever = _THREAD_RETRIEVERS.get(str(thread_id))
 
     if retriever is None:
         return {
@@ -166,7 +168,7 @@ def get_stock_price(symbol: str) -> dict:
     Fetch latest stock price for a given symbol (e.g. 'AAPL', 'TSLA')
     using Alpha Vantage with API key in the URL.
     """
-    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey=C9PE94QUEW9VWGFM"
+    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={os.getenv('ALPHAVANTAGE_API_KEY')}"
     r = requests.get(url)
     return r.json()
 
@@ -179,8 +181,9 @@ llm_with_tools = llm.bind_tools(tools)
 def chat_assistant(state: ChatState) -> dict:
     # Build the chat prompt from state and invoke the LLM assistant node
     prompt = ChatPromptTemplate.from_messages(
-        {("system", chat_prompt), ("user", "{messages}")}
-    )
+        [("system", chat_prompt),
+        ("placeholder", "{messages}")
+    ])
 
     chat_chain = prompt | llm_with_tools
 
